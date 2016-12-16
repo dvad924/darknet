@@ -661,6 +661,7 @@ data load_data_swag(char **paths, int n, int classes, float jitter)
 
 data load_data_detection(int n, char **paths, int m, int w, int h, int boxes, int classes, float jitter, float hue, float saturation, float exposure)
 {
+
     char **random_paths = get_random_paths(paths, n, m);
     int i;
     data d = {0};
@@ -672,6 +673,7 @@ data load_data_detection(int n, char **paths, int m, int w, int h, int boxes, in
 
     d.y = make_matrix(n, 5*boxes);
     for(i = 0; i < n; ++i){
+      
         image orig = load_image_color(random_paths[i], 0, 0);
 
         int oh = orig.h;
@@ -714,6 +716,7 @@ data load_data_detection(int n, char **paths, int m, int w, int h, int boxes, in
 
 void *load_thread(void *ptr)
 {
+  
     //printf("Loading data: %d\n", rand());
     load_args a = *(struct load_args*)ptr;
     if(a.exposure == 0) a.exposure = 1;
