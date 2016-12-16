@@ -15,7 +15,9 @@ extern "C" {
 
 #ifdef OPENCV
 #include "opencv2/highgui/highgui.hpp"
-#include "opencv2/imgproc/imgproc.hpp"
+         #if CV_VERSION_MAJOR == 3
+         #include "opencv2/imgproc/imgproc.hpp"
+         #endif
 extern "C" image ipl_to_image(IplImage* src);
 extern "C" void convert_yolo_detections(float *predictions, int classes, int num, int square, int side, int w, int h, float thresh, float **probs, box *boxes, int only_objectness);
 

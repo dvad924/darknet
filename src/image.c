@@ -13,8 +13,10 @@
 #ifdef OPENCV
 #include <opencv2/highgui/highgui_c.h>
 #include <opencv2/imgproc/imgproc_c.h>
-#include <opencv2/videoio/videoio_c.h>
-#include <opencv2/imgcodecs/imgcodecs_c.h>
+     #if CV_VERSION_MAJOR == 3
+     #include <opencv2/videoio/videoio_c.h>
+     #include <opencv2/imgcodecs/imgcodecs_c.h>
+     #endif
 #endif
 
 
