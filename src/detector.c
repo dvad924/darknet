@@ -9,7 +9,7 @@
 
 #ifdef OPENCV
 #include <opencv2/highgui/highgui_c.h>
-     #if CV_VERSION_MAJOR == 3
+     #ifdef WITH_OPENCV3
      #include <opencv2/videoio/videoio_c.h>
      #endif
 
