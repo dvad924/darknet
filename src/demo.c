@@ -18,7 +18,9 @@
      #include "opencv2/videoio/videoio_c.h"
      #endif
 
+#ifdef WITH_ROS
 IplImage * get_Ipl_image(void);
+#endif
 
 image ipl_to_image(IplImage*src);
 
@@ -46,7 +48,7 @@ static image images[FRAMES];
 static float *avg;
 static int delay;
 static int frame_skip;
-static ROS_box * ROI_boxes;
+
 
 void *fetch_in_thread(void *ptr)
 {
@@ -57,10 +59,13 @@ void *fetch_in_thread(void *ptr)
     in_s = resize_image(in, net.w, net.h);
     return 0;
 }
+#ifdef WITH_ROS
 /* This method will be used to capture
    input from a ros node, convert it to
    the struct image format for use in 
    the detector*/
+static ROS_box * ROI_boxes;
+
 void *fetch_in_thread_ros(void* ptr)
 {
 
@@ -157,7 +162,7 @@ void *detect_in_thread_ros(void *ptr)
       }
     printf("Num Objs: %d\n",count);
 }
-
+#endif
 void *detect_in_thread(void *ptr)
 {
     float nms = .4;
@@ -202,6 +207,7 @@ double get_wall_time()
     return (double)time.tv_sec + (double)time.tv_usec * .000001;
 }
 
+#ifdef WITH_ROS
 void ros_load_network(char *cfgfile, char* weightfile, float thresh, int cam_index, const char * filename, char **names, int classes, int f_skip)
 {
   image **alphabet = load_alphabet();
@@ -253,6 +259,7 @@ ROS_box* ros_demo()
   return ROI_boxes;
 
 }
+#endif
 
 void demo(char *cfgfile, char *weightfile, float thresh, int cam_index, const char *filename, char **names, int classes, int frame_skip, char *prefix)
 {
