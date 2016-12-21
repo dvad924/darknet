@@ -1,6 +1,8 @@
 #ifndef ACTIVATIONS_H
 #define ACTIVATIONS_H
+#ifndef __cplusplus
 #include "cuda.h"
+#endif
 #include "math.h"
 
 typedef enum{
