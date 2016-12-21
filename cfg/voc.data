@@ -1,6 +1,6 @@
 classes= 20
-train  = /home/pjreddie/data/voc/train.txt
-valid  = /home/pjreddie/data/voc/2007_test.txt
-names = data/voc.names
-backup = /home/pjreddie/backup/
+train  = /home/avail/data/pascal/VOCdevkit/train.txt
+valid  = /home/avail/data/pascal/VOCdevkit/2007_test_hh.txt
+names = /home/avail/code/darknet-exp/data/voc.names
+backup = /home/avail/backup/
 
