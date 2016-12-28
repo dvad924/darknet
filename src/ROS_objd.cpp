@@ -26,12 +26,7 @@ extern "C" {
 
 
 
-const std::string class_labels[] = { "aeroplane", "bicycle", "bird", "boat",
-                                     "bottle", "bus", "car", "cat",
-                                     "chair", "cow", "dining table", "dog",
-                                     "horse", "motorbike", "person",
-                                     "potted plant", "sheep", "sofa", "train",
-                                     "tv monitor" };
+const std::string class_labels[] = { "Face" };
 
 
 const int num_classes = sizeof(class_labels)/sizeof(class_labels[0]);
@@ -53,6 +48,7 @@ int FRAME_COUNT = 0;
 extern "C" IplImage* get_Ipl_image()
 {
   IplImage* ROS_img = new IplImage(cam_image_copy);
+  cam_image_copy.release();
   return ROS_img;
 }
 
@@ -108,7 +104,7 @@ private:
                    const std::string &class_label)
   {
     darknet::bbox bbox_result;
-
+    ROS_INFO("BOXES: %d\n",class_obj_count);
     for (int i = 0; i < class_obj_count; i++)
       {
         int xmin = (class_boxes[i].x - class_boxes[i].w/2)*FRAME_W;
@@ -188,7 +184,8 @@ private:
       }
     cv::imshow(OPENCV_WINDOW,input_frame);
     cv::waitKey(3);
-
+    //Free the memory used
+    input_frame.release();
   }
   void infoCallback(const sensor_msgs::CameraInfoPtr& info)
   {
@@ -215,7 +212,7 @@ private:
       {
         cam_image_copy = cam_image->image.clone();
         run(cam_image->image);
-       
+        
       }
     else
       {
@@ -235,15 +232,17 @@ int main(int argc, char** argv)
   ROS_INFO("I LIVE\n");
   ros::init(argc, argv, "listener");
 
-  char *cfg = "/home/avail/code/darknet-exp/cfg/tiny-yolo-voc.cfg";
-  char *datacfg = "/home/avail/code/darknet-exp/cfg/voc.data";
+  char *cfg = "/home/avail/code/darknet/cfg/face.cfg";
+  char *datacfg = "/home/avail/code/darknet/cfg/face.data";
   list *options = read_data_cfg(datacfg);
-  char *weights = "/home/avail/code/darknet-exp/weights/tiny-yolo-voc.weights";
-  float thresh = 0.10;
+  char *weights = "/home/avail/backup/face_20000.weights";
+  float thresh = 0.25;
   int index = 0;
   const char*filename = 0;
-  int classes = option_find_int(options, "classes",20);;
+  int classes = option_find_int(options, "classes",20);
+  ROS_INFO("NUM_CLASSES: %d\n",classes);
   char * name_list = option_find_str(options,"names","data/names.list");
+  ROS_INFO("Names : %s\n",name_list);
   char **names = get_labels(name_list);
   int f_skip = 1;
   ROS_INFO("LOADING... \n%s\n%s\n%s\n",cfg,datacfg,weights);

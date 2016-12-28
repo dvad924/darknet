@@ -71,6 +71,7 @@ void *fetch_in_thread_ros(void* ptr)
 
   IplImage* src = get_Ipl_image();
   image im = ipl_to_image(src);
+  free(src);
   rgbgr_image(im);
   in = im;
   in_s = resize_image(in,net.w,net.h);
@@ -82,20 +83,23 @@ void *detect_in_thread_ros(void *ptr)
     float nms = .4;
 
     layer l = net.layers[net.n-1];
-    float *X = det_s.data;
-
+    
+    float *X = in_s.data;
+    
     float *prediction = network_predict(net, X);
 
-    memcpy(predictions[demo_index], prediction, l.outputs*sizeof(float));
+    //memcpy(predictions[demo_index], prediction, l.outputs*sizeof(float));
 
-    mean_arrays(predictions, FRAMES, l.outputs, avg);
+    //mean_arrays(predictions, FRAMES, l.outputs, avg);
 
-    l.output = avg;
+    //l.output = avg;
 
-    free_image(det_s);
+    free_image(in_s);
     if(l.type == DETECTION){
+      fprintf(stderr,"Getting Detection Boxes");
         get_detection_boxes(l, 1, 1, demo_thresh, probs, boxes, 0);
     } else if (l.type == REGION){
+      fprintf(stderr,"Getting Region Boxes");
         get_region_boxes(l, 1, 1, demo_thresh, probs, boxes, 0, 0);
     } else {
         error("Last layer must produce detections\n");
@@ -106,6 +110,7 @@ void *detect_in_thread_ros(void *ptr)
     printf("\nFPS:%.1f\n",fps);
     printf("Objects:\n\n");
 
+    
     //extract bounding boxes put in array
     int total = l.h * l.w *l.n;
     int i,j;
@@ -113,15 +118,6 @@ void *detect_in_thread_ros(void *ptr)
     fprintf(stderr,"w : %d ,h : %d, n: %d, Total : %d\n",l.w,l.h,l.n,total);
     for(i = 0; i < total; ++i)
       {
-        float xmin = boxes[i].x - boxes[i].w/2.0;
-        float xmax = boxes[i].x + boxes[i].w/2.0;
-        float ymin = boxes[i].y - boxes[i].h/2.0;
-        float ymax = boxes[i].y + boxes[i].h/2.0;
-
-        if (xmin < 0) xmin = 0;
-        if (ymin < 0) ymin = 0;
-        if (xmax > 1) xmax = 1;
-        if (ymax > 1) ymax = 1;
         //iterate through possible boxes and collect the bounding boxes
         for(j = 0; j < l.classes; ++j)
           {
@@ -129,24 +125,35 @@ void *detect_in_thread_ros(void *ptr)
             float y_center = 0;
             float bbox_width = 0;
             float bbox_height= 0;
+  
             if(probs[i][j])
               {
+                box b = boxes[i];
+                fprintf(stderr,"x:%f, y:%f, w:%f, h:%f\n",b.x,b.y,b.w,b.h);
+                float xmin = b.x - b.w/2.0;
+                float xmax = b.x + b.w/2.0;
+                float ymin = b.y - b.h/2.0;
+                float ymax = b.y + b.h/2.0;
+
+                if (xmin < 0) xmin = 0;
+                if (ymin < 0) ymin = 0;
+                if (xmax > 1) xmax = 1;
+                if (ymax > 1) ymax = 1;
+
                 x_center = (xmin+xmax)/2;
                 y_center = (ymin+ymax)/2;
                 bbox_width = xmax - xmin;
                 bbox_height= ymax - ymin;            
-              }
+              
 
             // define bbox/
-            //bbox must be 1% of frame at least
-            if (bbox_width > 0.01 && bbox_height > 0.01)
-              {
+
                 ROI_boxes[count].x = x_center;
                 ROI_boxes[count].y = y_center;
                 ROI_boxes[count].w = bbox_width;
                 ROI_boxes[count].h = bbox_height;
                 ROI_boxes[count].Class = j;
-                count++;
+                count++; 
               }
           }
       }
@@ -169,6 +176,7 @@ void *detect_in_thread(void *ptr)
 
     layer l = net.layers[net.n-1];
     float *X = det_s.data;
+    fprintf(stderr,"Buffer Size : %d\n", sizeof(X)/sizeof(X[0]));
     float *prediction = network_predict(net, X);
 
     memcpy(predictions[demo_index], prediction, l.outputs*sizeof(float));
@@ -210,7 +218,7 @@ double get_wall_time()
 #ifdef WITH_ROS
 void ros_load_network(char *cfgfile, char* weightfile, float thresh, int cam_index, const char * filename, char **names, int classes, int f_skip)
 {
-  image **alphabet = load_alphabet();
+  image **alphabet = 0;
 
 
   demo_names = names;
@@ -223,7 +231,6 @@ void ros_load_network(char *cfgfile, char* weightfile, float thresh, int cam_ind
     load_weights(&net, weightfile);
   }
   set_batch_network(&net, 1);
-
   srand(2222222);
   
   layer l = net.layers[net.n-1];
@@ -238,6 +245,7 @@ void ros_load_network(char *cfgfile, char* weightfile, float thresh, int cam_ind
   probs = (float **)calloc(l.w*l.h*l.n, sizeof(float *));
   for(j = 0; j < l.w*l.h*l.n; ++j) probs[j] = (float *)calloc(l.classes, sizeof(float *));
 
+  
 }
 
 ROS_box* ros_demo()
@@ -248,10 +256,12 @@ ROS_box* ros_demo()
   
   detect_in_thread_ros(0);
   
-  disp = det;
+  disp = in;
   det = in;
-  det_s = in_s;
+  free_image(disp);
 
+
+  
   double after = get_wall_time();
   float curr = 1./(after - before);
   fps = curr;
