@@ -5,6 +5,7 @@
 #include <sensor_msgs/Image.h>
 #include <geometry_msgs/Point.h>
 #include <vector>
+#include <string>
 #include <iostream>
 #include <pthread.h>
 #include <std_msgs/Int8.h>
@@ -34,8 +35,8 @@ const int num_classes = sizeof(class_labels)/sizeof(class_labels[0]);
 cv::Mat cam_image_copy;
 
 // define parameters
-const std::string CAMERA_TOPIC_NAME = "/cv_camera/image_raw";
-const std::string CAMERA_TOPIC_INFO = "/cv_camera/camera_info";
+const std::string CAMERA_TOPIC_NAME = "/camera/image_raw";
+const std::string CAMERA_TOPIC_INFO = "/camera/camera_info";
 const std::string OPENCV_WINDOW = "WINDOW";
 int FRAME_W = 640;
 int FRAME_H = 480;
@@ -48,8 +49,17 @@ int FRAME_COUNT = 0;
 extern "C" IplImage* get_Ipl_image()
 {
   IplImage* ROS_img = new IplImage(cam_image_copy);
-  cam_image_copy.release();
   return ROS_img;
+}
+
+inline std::string badDefaultCheck(std::string in, std::string bad, std::string df)
+{
+  if ( in == bad )
+    {
+      return df;
+    }
+  else
+    return in;
 }
 
 class ObjectDetector
@@ -61,9 +71,9 @@ class ObjectDetector
   ros::NodeHandle                     _nh;
   image_transport::ImageTransport     _it;
   image_transport::Subscriber         _sub;
+  image_transport::Publisher          _im_pub;
   ros::Publisher                      _pub;
   ros::Publisher                      _bb_pub;
-  ros::Subscriber                     _info_sub;
   std::vector<std::vector<ROS_box> >  _class_bboxes;
   std::vector<int>                    _class_obj_count;
   std::vector<cv::Scalar>             _bbox_colors;
@@ -82,20 +92,27 @@ public:
         _bbox_colors[i] = cv::Scalar(255 - incr* i, 0 + incr*i,
                                      255 - incr*i);
       }
-    _sub = _it.subscribe(CAMERA_TOPIC_NAME,1,
-                               &ObjectDetector::cameraCallback,this);
 
-    _info_sub = _nh.subscribe(CAMERA_TOPIC_INFO,1,
-                              &ObjectDetector::infoCallback,this);
+    std::string incam    = _nh.resolveName( "incam" );
+    std::string objcount = _nh.resolveName( "objcout" );
+    std::string bbox     = _nh.resolveName( "bbox" );
+    std::string outcam   = _nh.resolveName( "outcam" );
+    incam    = badDefaultCheck( incam, "/incam", CAMERA_TOPIC_NAME );
+    objcount = badDefaultCheck( objcount, "/objcount", "/found_objects" );
+    bbox     = badDefaultCheck( bbox , "/bbox" , "/darknet_bboxes" );
+    outcam   = badDefaultCheck( outcam, "/outcam", "/darknet_cam" );
+      
+    _sub = _it.subscribe( incam , 1 ,
+                               &ObjectDetector::cameraCallback , this );
 
-    _pub = _nh.advertise<std_msgs::Int8>("found_objects",1);
-    _bb_pub = _nh.advertise<darknet::bbox_array>("darknet_bboxes",1);
-    
-    cv::namedWindow(OPENCV_WINDOW, cv::WINDOW_NORMAL);
+    _pub    = _nh.advertise<std_msgs::Int8>( objcount , 1 );
+    _bb_pub = _nh.advertise<darknet::bbox_array>( bbox , 1 );
+    _im_pub = _it.advertise( outcam , 1 );
+
   }
   ~ObjectDetector()
   {
-    cv::destroyWindow(OPENCV_WINDOW);
+
   }
 
 private:
@@ -167,14 +184,31 @@ private:
                                                     _bbox_colors[i],
                                                     class_labels[i]);
           }
+
+        ros::Time ct = ros::Time::now();
+        _bbox_results_msg.header.stamp = ct;
         _bb_pub.publish(_bbox_results_msg);
+        std_msgs::Header header = std_msgs::Header();
+        header.stamp = ct;
+        sensor_msgs::ImagePtr im_msg = cv_bridge::CvImage(header,"bgr8", cam_image_copy).toImageMsg();
+        _im_pub.publish(im_msg);
         _bbox_results_msg.bboxes.clear();
       }
     else
       {
+        ROS_INFO("PUBLISHING ALL\n");
         std_msgs::Int8 msg;
         msg.data = 0;
         _pub.publish(msg);
+        ros::Time ct = ros::Time::now();
+        _bbox_results_msg.header.stamp = ct;
+        _bb_pub.publish(_bbox_results_msg);
+        std_msgs::Header header = std_msgs::Header();
+        header.stamp = ct;
+        sensor_msgs::ImagePtr im_msg = cv_bridge::CvImage(header,"bgr8", cam_image_copy).toImageMsg();
+        _im_pub.publish(im_msg);
+        _bbox_results_msg.bboxes.clear();
+        
       }
 
     for (int i = 0; i< num_classes; i++)
@@ -182,8 +216,6 @@ private:
         _class_bboxes[i].clear();
         _class_obj_count[i] = 0;
       }
-    cv::imshow(OPENCV_WINDOW,input_frame);
-    cv::waitKey(3);
     //Free the memory used
     input_frame.release();
   }

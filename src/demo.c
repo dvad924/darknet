@@ -99,7 +99,6 @@ void *detect_in_thread_ros(void *ptr)
       fprintf(stderr,"Getting Detection Boxes");
         get_detection_boxes(l, 1, 1, demo_thresh, probs, boxes, 0);
     } else if (l.type == REGION){
-      fprintf(stderr,"Getting Region Boxes");
         get_region_boxes(l, 1, 1, demo_thresh, probs, boxes, 0, 0);
     } else {
         error("Last layer must produce detections\n");
@@ -115,7 +114,6 @@ void *detect_in_thread_ros(void *ptr)
     int total = l.h * l.w *l.n;
     int i,j;
     int count = 0;
-    fprintf(stderr,"w : %d ,h : %d, n: %d, Total : %d\n",l.w,l.h,l.n,total);
     for(i = 0; i < total; ++i)
       {
         //iterate through possible boxes and collect the bounding boxes
@@ -129,7 +127,6 @@ void *detect_in_thread_ros(void *ptr)
             if(probs[i][j])
               {
                 box b = boxes[i];
-                fprintf(stderr,"x:%f, y:%f, w:%f, h:%f\n",b.x,b.y,b.w,b.h);
                 float xmin = b.x - b.w/2.0;
                 float xmax = b.x + b.w/2.0;
                 float ymin = b.y - b.h/2.0;
