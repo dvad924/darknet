@@ -230,10 +230,12 @@ private:
   {
     std::cout << "USB Image Received" << std::endl;
     cv_bridge::CvImagePtr cam_image;
-    
+
     try
       {
         cam_image = cv_bridge::toCvCopy(msg,sensor_msgs::image_encodings::BGR8);
+        
+        
       }
     catch (cv_bridge::Exception& e)
       {
@@ -243,8 +245,9 @@ private:
     if (cam_image)
       {
         cam_image_copy = cam_image->image.clone();
+        FRAME_W = cam_image->image.cols;
+        FRAME_H = cam_image->image.rows;
         run(cam_image->image);
-        
       }
     else
       {
