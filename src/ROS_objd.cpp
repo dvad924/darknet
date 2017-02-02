@@ -115,6 +115,13 @@ public:
 
   }
 
+  float getThresh()
+  {
+    float thresh;
+    _nh.param<float>("yolo2/thresh",thresh,0.25);
+    return thresh;
+  }
+  
 private:
   void parseBBoxes(cv::Mat &input_frame, std::vector<ROS_box> &class_boxes,
                    int &class_obj_count, cv::Scalar &bbox_color,
@@ -266,27 +273,38 @@ int main(int argc, char** argv)
 {
   ROS_INFO("I LIVE\n");
   ros::init(argc, argv, "listener");
+  ObjectDetector od;
 
-  char *cfg = "/home/avail/code/darknet/cfg/face.cfg";
-  char *datacfg = "/home/avail/code/darknet/cfg/face.data";
+  
+  char * cfg = "/home/avail/code/darknet/cfg/face.cfg";
+  char * datacfg = "/home/avail/code/darknet/cfg/face.data";
   list *options = read_data_cfg(datacfg);
-  char *weights = "/home/avail/backup/face_20000.weights";
-  float thresh = 0.25;
+  char * weights = "/home/avail/backup/face_20000.weights";
+  float thresh;
   int index = 0;
   const char*filename = 0;
+  
   int classes = option_find_int(options, "classes",20);
+
   ROS_INFO("NUM_CLASSES: %d\n",classes);
+
   char * name_list = option_find_str(options,"names","data/names.list");
+
   ROS_INFO("Names : %s\n",name_list);
+
   char **names = get_labels(name_list);
+
   int f_skip = 1;
+
   ROS_INFO("LOADING... \n%s\n%s\n%s\n",cfg,datacfg,weights);
+
+  thresh = od.getThresh();
+
+  ROS_INFO("MODEL THRESH: %f\n",thresh);
+  
   //load the network into memory based on the input files
   ros_load_network(cfg,weights,thresh,index,filename, names, classes,f_skip);
 
-
-  
-  ObjectDetector od;
   ros::spin();
   return 0;
 }
